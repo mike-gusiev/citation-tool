@@ -1,0 +1,58 @@
+
+services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: ccitation_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    command:
+      - "http"
+      - "app:3001"
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    ports:
+      - "4040:4040"
+  app:
+    build: .
+    ports:
+      - "3001:3001"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://admin:admin@db:5432/citation_db
+      - REDIS_URL=redis://redis:6379
+      - NGROK_AUTH_TOKEN=${NGROK_AUTH_TOKEN}
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./exports:/app/exports
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    environment:
+      - REACT_APP_API_URL=http://app:3000 
+    depends_on:
+      - app
+    volumes:
+      - ./frontend:/frontend
+
+volumes:
+  postgres-data:
